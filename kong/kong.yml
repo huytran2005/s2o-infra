@@ -1,0 +1,16 @@
+_format_version: "3.0"
+
+services:
+  - name: s2o-api
+    url: http://api:8000
+    routes:
+      - name: s2o-api-route
+        paths:
+          - /api
+        strip_path: true
+
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 5
+      policy: local

@@ -1,0 +1,1 @@
+{"event": "ORDER_STATUS_UPDATED", "payload": {"order_id": "a9e54a17-fb9b-4d9d-837c-86494a2b2045", "restaurant_id": "f3c7bc32-5565-4b32-ae42-20577d54a2de", "qr_id": "40207684-fea5-43d2-a142-9da9fbdf6aeb", "status": "preparing"}}
