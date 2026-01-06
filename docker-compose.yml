@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: s2o-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  nifi:
+    image: apache/nifi:1.23.2
+    container_name: s2o-nifi
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq

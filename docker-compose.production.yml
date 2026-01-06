@@ -1,0 +1,130 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: s2o-postgres
+    env_file:
+      - env/postgres.prod.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./s2o_db.sql:/docker-entrypoint-initdb.d/01_s2o_db.sql
+    networks:
+      - s2o-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: s2o-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - s2o-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: s2o-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "no"]
+    networks:
+      - s2o-network
+
+  api:
+    image: huymmb/s2o-api:latest
+    container_name: s2o-api
+    env_file:
+      - env/api.prod.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - media_data:/app/media
+    networks:
+      - s2o-network
+    restart: always
+
+  kong:
+    image: kong:3.5
+    container_name: kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_LOG_LEVEL: info
+    volumes:
+      - ./kong/kong.yml:/kong/kong.yml:ro
+    ports:
+      - "8001:8000"
+      - "8002:8001"
+    depends_on:
+      - api
+    networks:
+      - s2o-network
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - s2o-network
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - s2o-network
+
+  nifi:
+    image: apache/nifi:1.23.2
+    container_name: s2o-nifi
+    ports:
+      - "8080:8080"
+    environment:
+      - NIFI_WEB_HTTP_PORT=8080
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./nifi/data:/opt/nifi/nifi-current/data
+      - ./nifi/output:/opt/nifi/nifi-current/output
+    networks:
+      - s2o-network
+
+  worker:
+    build: ./worker
+    container_name: s2o-worker
+    environment:
+      - RABBIT_HOST=s2o-rabbitmq
+      - QUEUE_NAME=order_events
+    depends_on:
+      - rabbitmq
+    networks:
+      - s2o-network
+    restart: always
+
+networks:
+  s2o-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  media_data:
