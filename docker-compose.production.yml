@@ -39,7 +39,7 @@ services:
     restart: always
 
   api:
-    image: huymmb/s2o-api:1.0.0
+    image: huymmb/s2o-api:1.0.6
     container_name: s2o-api
     env_file:
       - env/api.prod.env
@@ -110,6 +110,15 @@ services:
     depends_on:
       - rabbitmq
     volumes:
+      # BẮT BUỘC để lưu UI / consumer
+      - ./volumes/nifi/conf:/opt/nifi/nifi-current/conf
+      - ./volumes/nifi/state:/opt/nifi/nifi-current/state
+      - ./volumes/nifi/database_repository:/opt/nifi/nifi-current/database_repository
+      - ./volumes/nifi/flowfile_repository:/opt/nifi/nifi-current/flowfile_repository
+      - ./volumes/nifi/content_repository:/opt/nifi/nifi-current/content_repository
+      - ./volumes/nifi/provenance_repository:/opt/nifi/nifi-current/provenance_repository
+
+      # Giữ lại nếu bạn dùng
       - ./nifi/data:/opt/nifi/nifi-current/data
       - ./nifi/output:/opt/nifi/nifi-current/output
     networks:
@@ -121,12 +130,16 @@ services:
     container_name: s2o-worker
     environment:
       - RABBIT_HOST=s2o-rabbitmq
+      - RABBIT_PORT=5672
+      - RABBIT_USER=guest
+      - RABBIT_PASSWORD=guest
       - QUEUE_NAME=order_events
     depends_on:
       - rabbitmq
     networks:
       - s2o-network
     restart: always
+
 
 networks:
   s2o-network:
