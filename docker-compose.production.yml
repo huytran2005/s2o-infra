@@ -16,6 +16,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: always
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -25,6 +26,7 @@ services:
       - "15672:15672"
     networks:
       - s2o-network
+    restart: always
 
   redis:
     image: redis:7-alpine
@@ -34,9 +36,10 @@ services:
     command: ["redis-server", "--appendonly", "no"]
     networks:
       - s2o-network
+    restart: always
 
   api:
-    image: huymmb/s2o-api:latest
+    image: huymmb/s2o-api:1.0.6
     container_name: s2o-api
     env_file:
       - env/api.prod.env
@@ -57,7 +60,7 @@ services:
 
   kong:
     image: kong:3.5
-    container_name: kong
+    container_name: s2o-kong
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /kong/kong.yml
@@ -75,24 +78,27 @@ services:
       - api
     networks:
       - s2o-network
+    restart: always
 
   prometheus:
     image: prom/prometheus
-    container_name: prometheus
+    container_name: s2o-prometheus
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
     networks:
       - s2o-network
+    restart: always
 
   grafana:
     image: grafana/grafana
-    container_name: grafana
+    container_name: s2o-grafana
     ports:
       - "3000:3000"
     networks:
       - s2o-network
+    restart: always
 
   nifi:
     image: apache/nifi:1.23.2
@@ -104,22 +110,36 @@ services:
     depends_on:
       - rabbitmq
     volumes:
+      # BẮT BUỘC để lưu UI / consumer
+      - ./volumes/nifi/conf:/opt/nifi/nifi-current/conf
+      - ./volumes/nifi/state:/opt/nifi/nifi-current/state
+      - ./volumes/nifi/database_repository:/opt/nifi/nifi-current/database_repository
+      - ./volumes/nifi/flowfile_repository:/opt/nifi/nifi-current/flowfile_repository
+      - ./volumes/nifi/content_repository:/opt/nifi/nifi-current/content_repository
+      - ./volumes/nifi/provenance_repository:/opt/nifi/nifi-current/provenance_repository
+
+      # Giữ lại nếu bạn dùng
       - ./nifi/data:/opt/nifi/nifi-current/data
       - ./nifi/output:/opt/nifi/nifi-current/output
     networks:
       - s2o-network
+    restart: always
 
   worker:
-    build: ./worker
+    image: huymmb/s2o-worker:1.0.0
     container_name: s2o-worker
     environment:
       - RABBIT_HOST=s2o-rabbitmq
+      - RABBIT_PORT=5672
+      - RABBIT_USER=guest
+      - RABBIT_PASSWORD=guest
       - QUEUE_NAME=order_events
     depends_on:
       - rabbitmq
     networks:
       - s2o-network
     restart: always
+
 
 networks:
   s2o-network:
