@@ -39,7 +39,7 @@ services:
     restart: always
 
   api:
-    image: huymmb/s2o-api:1.0.6
+    image: huymmb/s2o-api:1.0.8
     container_name: s2o-api
     env_file:
       - env/api.prod.env
@@ -126,7 +126,7 @@ services:
     restart: always
 
   worker:
-    image: huymmb/s2o-worker:1.0.0
+    image: huymmb/s2o-worker:1.0.1
     container_name: s2o-worker
     environment:
       - RABBIT_HOST=s2o-rabbitmq
