@@ -1,0 +1,2 @@
+# NiFi runtime / state (never commit)
+volumes/nifi/
